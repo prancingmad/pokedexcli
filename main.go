@@ -11,5 +11,6 @@ func main() {
 
 func cleanInput(text string) []string {
 	stepOne := strings.TrimSpace(text)
-	stepTwo := strings.ToLower
+	stepTwo := strings.ToLower(stepOne)
+	return strings.Fields(stepTwo)
 }
