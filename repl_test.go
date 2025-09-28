@@ -2,18 +2,33 @@ package main
 
 import (
 	"testing"
-	"reflect"
 )
 
 func TestCleanInput(t *testing.T) {
-	resultOne := cleanInput("hello world")
-	resultTwo := cleanInput("Charmander Bulbasaur PIKACHU")
-	expectedOne := []string{"hello", "world"}
-	expectedTwo := []string{"charmander", "bulbasaur", "pikachu"}
-	if !reflect.DeepEqual(resultOne, expectedOne) {
-    	t.Errorf("expected %v, got %v", expectedOne, resultOne)
+	cases := []struct {
+		input string
+		expected []string
+	}{
+		{
+			input: "hello world",
+			expected: []string{"hello", "world"},
+		},
+		{
+			input: "Charmander Bulbasaur PIKACHU",
+			expected: []string{"charmander", "bulbasaur", "pikachu"},
+		},
 	}
-	if !reflect.DeepEqual(resultTwo, expectedTwo) {
-		t.Errorf("expected %v, got %v", expectedTwo, resultTwo)
+
+	for _, c := range cases {
+		actual := cleanInput(c.input)
+		if len(actual) != len (c.expected) {
+			t.Errorf("For input %q, expected %d words, got %d words", c.input, len(c.expected), len(actual))
+			continue
+		}
+		for i := range actual {
+			if actual[i] != c.expected[i] {
+				t.Errorf("For input %q, expected word %d to be %q, got %q", c.input, i, c.expected[i], actual[i])
+			}
+		}
 	}
 }
