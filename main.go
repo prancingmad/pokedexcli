@@ -56,6 +56,11 @@ func init() {
 			description: "Shows detailed information about a caught Pokemon",
 			callback:    commandInspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Displays all the Pokemon you've caught",
+			callback:    commandPokedex,
+		},
 	}
 }
 
@@ -351,6 +356,19 @@ func commandInspect(cfg *config, args []string) error {
 		fmt.Printf("  - %s\n", t)
 	}
 
+	return nil
+}
+
+func commandPokedex(cfg *config, args []string) error {
+	if len(cfg.Caught) == 0 {
+		fmt.Println("Your Pokedex is empty. Catch some Pokemon first!")
+		return nil
+	}
+
+	fmt.Println("Your Pokedex:")
+	for name := range cfg.Caught {
+		fmt.Println(" -", name)
+	}
 	return nil
 }
 
