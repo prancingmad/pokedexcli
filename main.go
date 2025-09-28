@@ -13,7 +13,7 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*config, []string) error
 }
 
 var commands map[string]cliCommand
@@ -40,6 +40,11 @@ func init() {
 			description: "Displays the previous page of 20 maps",
 			callback:    commandMapBack,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Displays all available pokemon in the location given",
+			callback:    commandExplore,
+		},
 	}
 }
 
@@ -63,13 +68,13 @@ func cleanInput(text string) []string {
 	return strings.Fields(stepTwo)
 }
 
-func commandExit(cfg *config) error {
+func commandExit(cfg *config, args []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(cfg *config) error {
+func commandHelp(cfg *config, args []string) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	for _, cmd := range commands {
@@ -78,7 +83,7 @@ func commandHelp(cfg *config) error {
 	return nil
 }
 
-func commandMap(cfg *config) error {
+func commandMap(cfg *config, args []string) error {
 	url := cfg.Next
 	if url == "" {
 		url = "https://pokeapi.co/api/v2/location-area?limit=20"
@@ -116,7 +121,7 @@ func commandMap(cfg *config) error {
 	return nil
 }
 
-func commandMapBack(cfg *config) error {
+func commandMapBack(cfg *config, args []string) error {
 	url := cfg.Previous
 	if url == "" {
 		fmt.Println("No previous page available.")
@@ -155,6 +160,60 @@ func commandMapBack(cfg *config) error {
 	return nil
 }
 
+func commandExplore(cfg *config, args []string) error {
+	if len(args) < 1 {
+		fmt.Println("Usage: explore <location-name>")
+		return nil
+	}
+
+	location := strings.Join(args, "-")
+
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", location)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("failed to fetch location: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad response: %s - %s", resp.Status, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	type exploreResponse struct {
+		PokemonEncounters []struct {
+			Pokemon struct {
+				Name string `json:"name"`
+				URL  string `json:"url"`
+			} `json:"pokemon"`
+		} `json:"pokemon_encounters"`
+	}
+
+	var parsed exploreResponse
+	err = json.Unmarshal(body, &parsed)
+	if err != nil {
+		return fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	if len(parsed.PokemonEncounters) == 0 {
+		fmt.Println("No Pokemon found in this location.")
+		return nil
+	}
+
+	fmt.Printf("Pokemon in %s:\n", location)
+	for _, encounter := range parsed.PokemonEncounters {
+		fmt.Println("- " + encounter.Pokemon.Name)
+	}
+
+	return nil
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	cfg := &config{}
@@ -165,8 +224,10 @@ func main() {
 		words := cleanInput(input)
 		if len(words) > 0 {
 			cmdName := words[0]
+			args := words[1:]
+
 			if cmd, ok := commands[cmdName]; ok {
-				err := cmd.callback(cfg)
+				err := cmd.callback(cfg, args)
 				if err != nil {
 					fmt.Println("Error:", err)
 				}
